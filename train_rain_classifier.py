@@ -250,7 +250,7 @@ def main():
     print("\nPreparing dataset...")
     image_paths, labels = prepare_dataset(
         rain_folder='overlayed_images',
-        no_rain_folder='.'
+        no_rain_folder='./no-rain'
     )
     
     # Split dataset into train and validation

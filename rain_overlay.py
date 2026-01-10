@@ -166,7 +166,7 @@ def main():
     overlay = RainOverlay(target_size=(224, 224))
     
     # Define paths
-    image_folder = '.'  # Current directory (contains 6_cumulonimbus_*.jpg)
+    image_folder = './no-rain'  # Current directory (contains 6_cumulonimbus_*.jpg)
     mask_folder = 'output'  # Folder with rain masks
     output_folder = 'overlayed_images'
     

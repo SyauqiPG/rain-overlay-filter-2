@@ -66,7 +66,7 @@ def predict_image(model, image_path, device='cuda'):
     prediction = predicted.item()
     confidence_score = confidence.item() * 100
     
-    return prediction, confidence_score, class_names[prediction] # Return
+    return prediction, confidence_score, class_names[prediction]
 
 
 def main():

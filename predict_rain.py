@@ -52,7 +52,7 @@ def predict_image(model, image_path, device='cuda'):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     
-    # Load and preprocess imagee
+    # Load and preprocess image
     image = Image.open(image_path).convert('RGB')
     image_tensor = transform(image).unsqueeze(0).to(device)
     

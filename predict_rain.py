@@ -92,7 +92,7 @@ def main():
     prediction, confidence, class_name = predict_image(model, args.image, device)
     
     print("\n" + "=" * 50)
-    print(f"Prediction: {class_name}")
+    print(f"Prediction: {class_name}") #test
     print(f"Confidence: {confidence:.2f}%")
     print("=" * 50)
 

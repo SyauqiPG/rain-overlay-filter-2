@@ -282,7 +282,7 @@ ls overlayed_images/*.jpg | wc -l
 
 ### Step 5: Train Classification Model
 
-**Objective**: Train MobileNetV3 to distinguish rain from no-rain.
+**Objective**: Train MobileNetV4 to distinguish rain from no-rain.
 
 **Command:**
 ```bash
@@ -297,8 +297,8 @@ python train_rain_classifier.py
    - Splits 80/20 train/validation (stratified)
 
 2. **Model creation**:
-   - Loads MobileNetV3-Large pretrained on ImageNet
-   - Modifies final layer for binary classification (2 classes)
+   - Loads MobileNetV4 (conv_medium variant) pretrained on ImageNet via timm library
+   - Automatically sets final layer for binary classification (2 classes)
 
 3. **Training** (10 epochs):
    - Applies data augmentation (flips, rotations)
@@ -312,7 +312,7 @@ python train_rain_classifier.py
 
 **Console Output:**
 ```
-Rain Binary Classification with MobileNetV3
+Rain Binary Classification with MobileNetV4
 ============================================================
 
 Using device: cuda
@@ -325,7 +325,7 @@ Total dataset size: 12 images
 Train set: 9 images
 Validation set: 3 images
 
-Creating MobileNetV3-Large model...
+Creating MobileNetV4 model...
 
 Starting training...
 ============================================================
@@ -525,7 +525,13 @@ ls *.jpg *.png
 
 3. Use smaller model:
    ```python
-   model = models.mobilenet_v3_small(pretrained=True)
+   import timm
+
+   model = timm.create_model(
+       'mobilenetv4_conv_small.e500_r224_in1k',
+       pretrained=True,
+       num_classes=2
+   )
    ```
 
 #### Issue: Low validation accuracy (<70%)

@@ -1,10 +1,11 @@
 """
-Inference script for rain classification using trained MobileNetV3 model.
+Inference script for rain classification using trained MobileNetV4 model.
 """
 
 import torch
 import torch.nn as nn
-from torchvision import transforms, models
+from torchvision import transforms
+import timm
 from PIL import Image
 import argparse
 
@@ -20,10 +21,12 @@ def load_model(model_path, device='cuda'):
     Returns:
         Loaded model ready for inference
     """
-    # Create model architecture (same as training)
-    model = models.mobilenet_v3_large(pretrained=False)
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features=in_features, out_features=2)
+    # Create model architecture (same as training) using timm
+    model = timm.create_model(
+        'mobilenetv4_conv_medium.e500_r224_in1k',
+        pretrained=False,
+        num_classes=2
+    )
     
     # Load weights
     model.load_state_dict(torch.load(model_path, map_location=device))

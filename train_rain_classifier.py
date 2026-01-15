@@ -1,13 +1,15 @@
 """
-Rain Binary Classification using MobileNetV3 Transfer Learning
-Based on: https://medium.com/@RobuRishabh/understanding-and-implementing-mobilenetv3-422bd0bdfb5a
+Rain Binary Classification using MobileNetV4 Transfer Learning
+MobileNetV4 paper: https://arxiv.org/abs/2404.10518
+Using timm library for MobileNetV4 implementation
 """
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, models
+from torchvision import transforms
+import timm
 from PIL import Image
 import os
 import numpy as np
@@ -84,22 +86,29 @@ def prepare_dataset(rain_folder='overlayed_images', no_rain_folder='.'):
 
 def create_model(num_classes=2, pretrained=True):
     """
-    Create MobileNetV3-Large model for binary classification.
+    Create MobileNetV4 model for binary classification.
     
     Args:
         num_classes: Number of output classes (2 for binary)
         pretrained: Whether to use pretrained ImageNet weights
     
     Returns:
-        Modified MobileNetV3 model
-    """
-    # Load pretrained MobileNetV3-Large
-    model = models.mobilenet_v3_large(pretrained=pretrained)
+        Modified MobileNetV4 model
     
-    # Modify the final classification layer
-    # MobileNetV3 classifier structure: [Linear(960, 1280), Hardswish, Dropout, Linear(1280, 1000)]
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features=in_features, out_features=num_classes)
+    Available MobileNetV4 variants in timm:
+        - mobilenetv4_conv_small: Smallest, fastest
+        - mobilenetv4_conv_medium: Medium size
+        - mobilenetv4_conv_large: Larger conv-only model
+        - mobilenetv4_hybrid_medium: Medium hybrid (conv + attention)
+        - mobilenetv4_hybrid_large: Large hybrid model
+    """
+    # Load pretrained MobileNetV4 using timm
+    # Using mobilenetv4_conv_medium as a good balance between speed and accuracy
+    model = timm.create_model(
+        'mobilenetv4_conv_medium.e500_r224_in1k',
+        pretrained=pretrained,
+        num_classes=num_classes
+    )
     
     return model
 
@@ -239,7 +248,7 @@ def plot_training_history(history, save_path='training_history.png'):
 def main():
     """Main training pipeline."""
     
-    print("Rain Binary Classification with MobileNetV3")
+    print("Rain Binary Classification with MobileNetV4")
     print("=" * 60)
     
     # Set device
@@ -285,7 +294,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=0)
     
     # Create model
-    print("\nCreating MobileNetV3-Large model...")
+    print("\nCreating MobileNetV4 model...")
     model = create_model(num_classes=2, pretrained=True)
     
     # Define loss function and optimizer

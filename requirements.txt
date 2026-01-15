@@ -2,5 +2,6 @@ numpy
 pillow
 torch
 torchvision
+timm
 matplotlib
 scikit-learn

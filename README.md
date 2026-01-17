@@ -51,14 +51,32 @@ Training Dataset                   →  Step 5: Predict
 
 ### Requirements
 
-- Python 3.7+
+- Python 3.9+ (recommended: 3.10+)
 - PyTorch (with CUDA support recommended)
 - See `requirements.txt` for all dependencies
 
 ### Install Dependencies
 
+**Recommended (Windows/macOS/Linux): use a virtual environment** so you consistently use the same Pillow/PyTorch versions.
+
+**Windows (PowerShell):**
 ```bash
-pip install -r requirements.txt
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+**macOS/Linux (bash/zsh):**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+```bash
+python -m pip install -r requirements.txt
 ```
 
 This installs:
@@ -71,7 +89,22 @@ This installs:
 
 **For GPU support** (recommended for training):
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+```
+
+## Troubleshooting
+
+### `AttributeError: module 'PIL.Image' has no attribute 'Resampling'`
+
+**Why it happens**: this project uses `Image.Resampling.LANCZOS`. If you run outside the virtual environment, your system Python may be importing an older Pillow that doesn’t include `Image.Resampling`.
+
+**Fix**:
+- Activate the project venv and re-run.
+- Or upgrade Pillow in the interpreter you’re using: `python -m pip install -U pillow`
+
+**Quick check**:
+```bash
+python -c "import PIL; from PIL import Image; print('Pillow:', PIL.__version__); print('Has Resampling:', hasattr(Image, 'Resampling'))"
 ```
 
 ## Quick Start

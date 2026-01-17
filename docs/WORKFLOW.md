@@ -24,20 +24,36 @@ This guide walks you through the entire pipeline from start to finish: preparing
 
 1. **Clone or download the project**
 
-2. **Install dependencies:**
+2. **Create + activate a virtual environment (recommended):**
+
+   **Windows (PowerShell):**
    ```bash
-   pip install -r requirements.txt
+   py -m venv .venv
+   .\\.venv\\Scripts\\Activate.ps1
    ```
 
-3. **For GPU support (recommended):**
+   **macOS/Linux:**
    ```bash
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
 
-4. **Verify installation:**
+3. **Install dependencies:**
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+4. **For GPU support (recommended):**
+   ```bash
+   python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+   ```
+
+5. **Verify installation:**
    ```bash
    python -c "import torch; print(f'PyTorch: {torch.__version__}')"
    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+   python -c "import PIL; from PIL import Image; print(f'Pillow: {PIL.__version__} | Has Resampling: {hasattr(Image, \'Resampling\')}')"
    ```
 
 ## Workflow Overview
@@ -494,6 +510,24 @@ Test on both rain and no-rain images - should get correct predictions with high 
 ## Troubleshooting
 
 ### Common Issues
+
+#### Issue: `AttributeError: module 'PIL.Image' has no attribute 'Resampling'`
+
+**Problem**: You’re running with an older Pillow (common when using system Python instead of the project venv). This project uses `Image.Resampling.LANCZOS`.
+
+**Solutions**:
+1. Activate the project virtual environment, then reinstall requirements:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+2. Or upgrade Pillow in the interpreter you’re using:
+   ```bash
+   python -m pip install -U pillow
+   ```
+3. Verify:
+   ```bash
+   python -c "import PIL; from PIL import Image; print(PIL.__version__, hasattr(Image,'Resampling'))"
+   ```
 
 #### Issue: "No images found"
 

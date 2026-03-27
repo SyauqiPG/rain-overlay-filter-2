@@ -2,36 +2,41 @@
 
 ## Overview
 
-`train_rain_classifier.py` implements a binary rain classification model using MobileNetV3 transfer learning. The model learns to distinguish between images with rain and images without rain.
+`train_rain_classifier.py` implements a binary rain classification model using MobileNetV4 transfer learning. The model learns to distinguish between images with rain and images without rain.
 
 ## Purpose
 
-Train a deep learning model to automatically detect the presence of rain in images, particularly in cloud/weather imagery. Uses transfer learning from ImageNet-pretrained MobileNetV3-Large for efficient training with limited data.
+Train a deep learning model to automatically detect the presence of rain in images, particularly in cloud/weather imagery. Uses transfer learning from ImageNet-pretrained MobileNetV4 for efficient training with limited data.
 
 ## Architecture
 
-### Base Model: MobileNetV3-Large
+### Base Model: MobileNetV4
 
 - **Pretrained on**: ImageNet (1.2M images, 1000 classes)
-- **Architecture**: MobileNetV3-Large with inverted residuals
+- **Architecture**: MobileNetV4 with efficient conv blocks and optional hybrid attention
 - **Input Size**: 224×224×3 (RGB)
-- **Features**: Depthwise separable convolutions, squeeze-and-excite modules
+- **Features**: Depthwise separable convolutions, universal inverted bottlenecks, progressive training
+- **Source**: timm library (pytorch-image-models)
+- **Paper**: https://arxiv.org/abs/2404.10518
 
-### Transfer Learning Modifications
+### Transfer Learning Approach
 
 ```python
-# Original MobileNetV3-Large classifier
-classifier[3] = Linear(1280 → 1000)  # ImageNet classes
-
-# Modified for binary rain classification
-classifier[3] = Linear(1280 → 2)     # [No Rain, Rain]
+# Create MobileNetV4 with pre-trained weights
+model = timm.create_model(
+    'mobilenetv4_conv_medium.e500_r224_in1k',
+    pretrained=True,
+    num_classes=2  # Automatically replaces final layer for binary classification
+)
 ```
 
-**Why MobileNetV3?**
-- Efficient architecture (fast inference)
-- Excellent accuracy-to-size ratio
+**Why MobileNetV4?**
+- Improved efficiency over MobileNetV3
+- Better accuracy-to-latency tradeoff
+- Latest architecture design (2024)
 - Optimized for mobile/edge deployment
 - Strong transfer learning performance
+- Multiple variants available (small, medium, large, hybrid)
 
 ## Classes and Functions
 
@@ -96,7 +101,7 @@ image_paths, labels = prepare_dataset(
 
 ### Function: create_model()
 
-Creates and configures the MobileNetV3 model.
+Creates and configures the MobileNetV4 model.
 
 **Signature:**
 ```python
@@ -108,14 +113,23 @@ create_model(num_classes=2, pretrained=True)
 - `pretrained` (bool): Load ImageNet weights
 
 **Returns:**
-- Modified MobileNetV3 model
+- Modified MobileNetV4 model
 
 **Implementation:**
 ```python
-model = models.mobilenet_v3_large(pretrained=True)
-in_features = model.classifier[3].in_features  # 1280
-model.classifier[3] = nn.Linear(in_features, num_classes)
+model = timm.create_model(
+    'mobilenetv4_conv_medium.e500_r224_in1k',
+    pretrained=pretrained,
+    num_classes=num_classes  # Automatically replaces final layer
+)
 ```
+
+**Available MobileNetV4 Variants in timm:**
+- `mobilenetv4_conv_small`: Smallest and fastest
+- `mobilenetv4_conv_medium`: Good balance (default in this project)
+- `mobilenetv4_conv_large`: Larger conv-only model
+- `mobilenetv4_hybrid_medium`: Medium with hybrid (conv + attention) blocks
+- `mobilenetv4_hybrid_large`: Largest with hybrid architecture
 
 ### Function: train_model()
 
@@ -256,7 +270,7 @@ python train_rain_classifier.py
 1. Loads images from `overlayed_images/` (rain) and `.` (no rain)
 2. Splits into 80/20 train/validation
 3. Creates data loaders with augmentation
-4. Trains MobileNetV3-Large for 10 epochs
+4. Trains MobileNetV4 (conv_medium variant) for 10 epochs
 5. Saves best model as `best_rain_classifier.pth`
 6. Generates `training_history.png` plot
 
@@ -274,8 +288,19 @@ batch_size = 32
 # Change learning rate
 optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
-# Use smaller model
-model = models.mobilenet_v3_small(pretrained=True)
+# Use a different MobileNetV4 variant
+model = timm.create_model(
+    'mobilenetv4_conv_small.e500_r224_in1k',  # Smaller, faster
+    pretrained=True,
+    num_classes=2
+)
+
+# Use hybrid variant (slower but potentially better accuracy)
+model = timm.create_model(
+    'mobilenetv4_hybrid_large.e500_r224_in1k',
+    pretrained=True,
+    num_classes=2
+)
 ```
 
 ## Output Files
@@ -284,11 +309,15 @@ model = models.mobilenet_v3_small(pretrained=True)
 
 **Content**: Model state dict (trained weights)
 
-**Size**: ~15-20 MB (MobileNetV3-Large)
+**Size**: ~10-15 MB (MobileNetV4 conv_medium)
 
 **Loading:**
 ```python
-model = create_model(num_classes=2, pretrained=False)
+model = timm.create_model(
+    'mobilenetv4_conv_medium.e500_r224_in1k',
+    pretrained=False,
+    num_classes=2
+)
 model.load_state_dict(torch.load('best_rain_classifier.pth'))
 ```
 
@@ -307,7 +336,7 @@ model.load_state_dict(torch.load('best_rain_classifier.pth'))
 ### Console Output
 
 ```
-Rain Binary Classification with MobileNetV3
+Rain Binary Classification with MobileNetV4
 ============================================================
 
 Using device: cuda
@@ -320,7 +349,7 @@ Total dataset size: 18 images
 Train set: 14 images
 Validation set: 4 images
 
-Creating MobileNetV3-Large model...
+Creating MobileNetV4 model...
 
 Starting training...
 ============================================================
@@ -415,7 +444,8 @@ for epoch in range(num_epochs):
 ## Dependencies
 
 - `torch`: PyTorch deep learning framework
-- `torchvision`: Models and transforms
+- `torchvision`: Transforms and utilities
+- `timm`: PyTorch Image Models (for MobileNetV4)
 - `pillow`: Image loading
 - `numpy`: Array operations
 - `sklearn`: Train/test split
@@ -427,7 +457,7 @@ for epoch in range(num_epochs):
 
 **Solution:**
 - Reduce batch size: `batch_size = 8`
-- Use smaller model: `mobilenet_v3_small`
+- Use smaller model: `mobilenetv4_conv_small` (via timm)
 - Use CPU: `device = 'cpu'`
 
 ### Low Validation Accuracy

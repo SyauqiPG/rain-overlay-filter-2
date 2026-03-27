@@ -1,6 +1,16 @@
-numpy
-pillow
-torch
-torchvision
-matplotlib
-scikit-learn
+# Core dependencies
+numpy>=1.21.0
+pillow>=9.0.0
+matplotlib>=3.5.0
+
+# Deep learning framework
+torch>=1.10.0
+torchvision>=0.11.0
+timm>=0.6.0
+
+# Machine learning and data processing
+scikit-learn>=1.0.0
+
+# Development and utility tools
+jupyter>=1.0.0
+tqdm>=4.62.0

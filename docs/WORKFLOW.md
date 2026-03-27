@@ -24,20 +24,36 @@ This guide walks you through the entire pipeline from start to finish: preparing
 
 1. **Clone or download the project**
 
-2. **Install dependencies:**
+2. **Create + activate a virtual environment (recommended):**
+
+   **Windows (PowerShell):**
    ```bash
-   pip install -r requirements.txt
+   py -m venv .venv
+   .\\.venv\\Scripts\\Activate.ps1
    ```
 
-3. **For GPU support (recommended):**
+   **macOS/Linux:**
    ```bash
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+   python3 -m venv .venv
+   source .venv/bin/activate
    ```
 
-4. **Verify installation:**
+3. **Install dependencies:**
+   ```bash
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
+   ```
+
+4. **For GPU support (recommended):**
+   ```bash
+   python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+   ```
+
+5. **Verify installation:**
    ```bash
    python -c "import torch; print(f'PyTorch: {torch.__version__}')"
    python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
+   python -c "import PIL; from PIL import Image; print(f'Pillow: {PIL.__version__} | Has Resampling: {hasattr(Image, \'Resampling\')}')"
    ```
 
 ## Workflow Overview
@@ -282,7 +298,7 @@ ls overlayed_images/*.jpg | wc -l
 
 ### Step 5: Train Classification Model
 
-**Objective**: Train MobileNetV3 to distinguish rain from no-rain.
+**Objective**: Train MobileNetV4 to distinguish rain from no-rain.
 
 **Command:**
 ```bash
@@ -297,8 +313,8 @@ python train_rain_classifier.py
    - Splits 80/20 train/validation (stratified)
 
 2. **Model creation**:
-   - Loads MobileNetV3-Large pretrained on ImageNet
-   - Modifies final layer for binary classification (2 classes)
+   - Loads MobileNetV4 (conv_medium variant) pretrained on ImageNet via timm library
+   - Automatically sets final layer for binary classification (2 classes)
 
 3. **Training** (10 epochs):
    - Applies data augmentation (flips, rotations)
@@ -312,7 +328,7 @@ python train_rain_classifier.py
 
 **Console Output:**
 ```
-Rain Binary Classification with MobileNetV3
+Rain Binary Classification with MobileNetV4
 ============================================================
 
 Using device: cuda
@@ -325,7 +341,7 @@ Total dataset size: 12 images
 Train set: 9 images
 Validation set: 3 images
 
-Creating MobileNetV3-Large model...
+Creating MobileNetV4 model...
 
 Starting training...
 ============================================================
@@ -495,6 +511,24 @@ Test on both rain and no-rain images - should get correct predictions with high 
 
 ### Common Issues
 
+#### Issue: `AttributeError: module 'PIL.Image' has no attribute 'Resampling'`
+
+**Problem**: You’re running with an older Pillow (common when using system Python instead of the project venv). This project uses `Image.Resampling.LANCZOS`.
+
+**Solutions**:
+1. Activate the project virtual environment, then reinstall requirements:
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+2. Or upgrade Pillow in the interpreter you’re using:
+   ```bash
+   python -m pip install -U pillow
+   ```
+3. Verify:
+   ```bash
+   python -c "import PIL; from PIL import Image; print(PIL.__version__, hasattr(Image,'Resampling'))"
+   ```
+
 #### Issue: "No images found"
 
 **Problem**: `rain_overlay.py` can't find cloud images
@@ -525,7 +559,13 @@ ls *.jpg *.png
 
 3. Use smaller model:
    ```python
-   model = models.mobilenet_v3_small(pretrained=True)
+   import timm
+
+   model = timm.create_model(
+       'mobilenetv4_conv_small.e500_r224_in1k',
+       pretrained=True,
+       num_classes=2
+   )
    ```
 
 #### Issue: Low validation accuracy (<70%)

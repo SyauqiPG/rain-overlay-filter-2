@@ -1,13 +1,15 @@
 """
-Rain Binary Classification using MobileNetV3 Transfer Learning
-Based on: https://medium.com/@RobuRishabh/understanding-and-implementing-mobilenetv3-422bd0bdfb5a
+Rain Binary Classification using MobileNetV4 Transfer Learning
+MobileNetV4 paper: https://arxiv.org/abs/2404.10518
+Using timm library for MobileNetV4 implementation
 """
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
-from torchvision import transforms, models
+from torchvision import transforms
+import timm
 from PIL import Image
 import os
 import numpy as np
@@ -82,30 +84,70 @@ def prepare_dataset(rain_folder='overlayed_images', no_rain_folder='.'):
     return image_paths, labels
 
 
+class EarlyStopping:
+    """
+    Stop training when validation loss doesn't improve for `patience` epochs.
+    
+    Args:
+        patience: Epochs to wait before stopping after last improvement.
+        min_delta: Minimum change to qualify as improvement.
+        verbose: Print message when improvement is detected.
+    """
+    def __init__(self, patience=10, min_delta=0.0, verbose=True):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.verbose = verbose
+        self.counter = 0
+        self.best_loss = None
+        self.early_stop = False
+
+    def __call__(self, val_loss):
+        if self.best_loss is None:
+            self.best_loss = val_loss
+        elif val_loss < self.best_loss - self.min_delta:
+            self.best_loss = val_loss
+            self.counter = 0
+            if self.verbose:
+                print(f'EarlyStopping: val_loss improved to {val_loss:.4f}')
+        else:
+            self.counter += 1
+            if self.verbose:
+                print(f'EarlyStopping: no improvement for {self.counter}/{self.patience} epochs')
+            if self.counter >= self.patience:
+                self.early_stop = True
+
+
 def create_model(num_classes=2, pretrained=True):
     """
-    Create MobileNetV3-Large model for binary classification.
+    Create MobileNetV4 model for binary classification.
     
     Args:
         num_classes: Number of output classes (2 for binary)
         pretrained: Whether to use pretrained ImageNet weights
     
     Returns:
-        Modified MobileNetV3 model
-    """
-    # Load pretrained MobileNetV3-Large
-    model = models.mobilenet_v3_large(pretrained=pretrained)
+        Modified MobileNetV4 model
     
-    # Modify the final classification layer
-    # MobileNetV3 classifier structure: [Linear(960, 1280), Hardswish, Dropout, Linear(1280, 1000)]
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features=in_features, out_features=num_classes)
+    Available MobileNetV4 variants in timm:
+        - mobilenetv4_conv_small: Smallest, fastest
+        - mobilenetv4_conv_medium: Medium size
+        - mobilenetv4_conv_large: Larger conv-only model
+        - mobilenetv4_hybrid_medium: Medium hybrid (conv + attention)
+        - mobilenetv4_hybrid_large: Large hybrid model
+    """
+    # Load pretrained MobileNetV4 using timm
+    # Using mobilenetv4_conv_medium as a good balance between speed and accuracy
+    model = timm.create_model(
+        'mobilenetv4_conv_medium.e500_r224_in1k',
+        pretrained=pretrained,
+        num_classes=num_classes
+    )
     
     return model
 
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
-                num_epochs=10, device='cuda'):
+                num_epochs=100, device='cuda', patience=100, min_delta=0.0):
     """
     Train the model.
     
@@ -117,6 +159,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
         optimizer: Optimizer
         num_epochs: Number of training epochs
         device: Device to train on ('cuda' or 'cpu')
+        patience: Early stopping patience (epochs without improvement)
+        min_delta: Minimum improvement in val_loss to reset patience counter
     
     Returns:
         Training history (losses and accuracies)
@@ -131,6 +175,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
     }
     
     best_val_acc = 0.0
+    early_stopping = EarlyStopping(patience=patience, min_delta=min_delta, verbose=True)
     
     for epoch in range(num_epochs):
         # Training phase
@@ -205,6 +250,12 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             best_val_acc = val_acc
             torch.save(model.state_dict(), 'best_rain_classifier.pth')
             print(f'Saved best model with validation accuracy: {val_acc:.2f}%')
+        
+        # Early stopping check
+        early_stopping(val_loss)
+        if early_stopping.early_stop:
+            print(f'\nEarly stopping triggered after epoch {epoch+1}.')
+            break
     
     return history
 
@@ -221,6 +272,7 @@ def plot_training_history(history, save_path='training_history.png'):
     ax1.set_title('Training and Validation Loss')
     ax1.legend()
     ax1.grid(True)
+    ax1.set_yscale('log')
     
     # Plot accuracy
     ax2.plot(history['train_acc'], label='Train Acc')
@@ -239,7 +291,7 @@ def plot_training_history(history, save_path='training_history.png'):
 def main():
     """Main training pipeline."""
     
-    print("Rain Binary Classification with MobileNetV3")
+    print("Rain Binary Classification with MobileNetV4")
     print("=" * 60)
     
     # Set device
@@ -250,7 +302,7 @@ def main():
     print("\nPreparing dataset...")
     image_paths, labels = prepare_dataset(
         rain_folder='overlayed_images',
-        no_rain_folder='.'
+        no_rain_folder='./no-rain'
     )
     
     # Split dataset into train and validation
@@ -281,11 +333,11 @@ def main():
     val_dataset = RainDataset(val_paths, val_labels, transform=val_transform)
     
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
-    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=0)
     
     # Create model
-    print("\nCreating MobileNetV3-Large model...")
+    print("\nCreating MobileNetV4 model...")
     model = create_model(num_classes=2, pretrained=True)
     
     # Define loss function and optimizer
@@ -302,8 +354,10 @@ def main():
         val_loader=val_loader,
         criterion=criterion,
         optimizer=optimizer,
-        num_epochs=10,
-        device=device
+        num_epochs=500,
+        device=device,
+        patience=100,
+        min_delta=0.001
     )
     
     # Plot training history

@@ -85,6 +85,7 @@ class RainOverlay:
         os.makedirs(output_dir, exist_ok=True)
         
         results = []
+        skip_count = 0
         
         for img_path in image_paths:
             img_name = Path(img_path).stem
@@ -99,6 +100,17 @@ class RainOverlay:
             for mask_path in mask_paths:
                 mask_name = Path(mask_path).stem
                 
+                # Skip if output already exists
+                output_filename = f"{img_name}_{mask_name}.jpg"
+                output_path = os.path.join(output_dir, output_filename)
+                if os.path.exists(output_path):
+                    skip_count += 1
+                    if skip_count % 10000 == 0:
+                        print(f"Skipped (exists): {skip_count} files so far...")
+                        print(f"Last skipped file: {output_filename}")
+                    results.append(output_path)
+                    continue
+                
                 # Load rain mask
                 rain_mask = Image.open(mask_path)
                 
@@ -106,12 +118,13 @@ class RainOverlay:
                 result = self.apply_overlay(base_img, rain_mask, blend_mode, opacity)
                 
                 # Save result
-                output_filename = f"{img_name}_{mask_name}.jpg"
-                output_path = os.path.join(output_dir, output_filename)
                 result.save(output_path, quality=95)
                 
                 results.append(output_path)
                 print(f"Created: {output_filename}")
+        
+        if skip_count:
+            print(f"Skipped {skip_count} existing files total.")
         
         return results
     
@@ -166,7 +179,7 @@ def main():
     overlay = RainOverlay(target_size=(224, 224))
     
     # Define paths
-    image_folder = '.'  # Current directory (contains 6_cumulonimbus_*.jpg)
+    image_folder = './no-rain'  # Current directory (contains 6_cumulonimbus_*.jpg)
     mask_folder = 'output'  # Folder with rain masks
     output_folder = 'overlayed_images'
     

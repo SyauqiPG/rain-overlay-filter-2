@@ -1,10 +1,11 @@
 """
-Inference script for rain classification using trained MobileNetV3 model.
+Inference script for rain classification using trained MobileNetV4 model.
 """
 
 import torch
 import torch.nn as nn
-from torchvision import transforms, models
+from torchvision import transforms
+import timm
 from PIL import Image
 import argparse
 
@@ -20,10 +21,12 @@ def load_model(model_path, device='cuda'):
     Returns:
         Loaded model ready for inference
     """
-    # Create model architecture (same as training)
-    model = models.mobilenet_v3_large(pretrained=False)
-    in_features = model.classifier[3].in_features
-    model.classifier[3] = nn.Linear(in_features=in_features, out_features=2)
+    # Create model architecture (same as training) using timm
+    model = timm.create_model(
+        'mobilenetv4_conv_medium.e500_r224_in1k',
+        pretrained=False,
+        num_classes=2
+    )
     
     # Load weights
     model.load_state_dict(torch.load(model_path, map_location=device))
@@ -52,7 +55,7 @@ def predict_image(model, image_path, device='cuda'):
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     
-    # Load and preprocess image
+    # Load and preprocess imagee
     image = Image.open(image_path).convert('RGB')
     image_tensor = transform(image).unsqueeze(0).to(device)
     
@@ -92,10 +95,12 @@ def main():
     prediction, confidence, class_name = predict_image(model, args.image, device)
     
     print("\n" + "=" * 50)
-    print(f"Prediction: {class_name}")
+    print(f"Prediction: {class_name}") #test
     print(f"Confidence: {confidence:.2f}%")
     print("=" * 50)
 
 
 if __name__ == '__main__':
     main()
+
+# bro why the commit stopped working?

@@ -5,7 +5,7 @@
 This project provides a comprehensive workflow for:
 1. 🌧️ **Generating synthetic rain masks** with realistic patterns
 2. 🖼️ **Overlaying rain onto cloud images** to create training data  
-3. 🤖 **Training a MobileNetV3 classifier** to detect rain in images
+3. 🤖 **Training a MobileNetV4 classifier** to detect rain in images
 4. 🔍 **Making predictions** on new images
 
 ## Project Overview
@@ -21,7 +21,7 @@ Step 1: Cloud Images               →  Step 2: Generate Rain Masks
         ↓                                      ↓
                                        
 Step 3: Overlay Rain               →  Step 4: Train Classifier
-(combine clouds + rain)                (MobileNetV3 transfer learning)
+(combine clouds + rain)                (MobileNetV4 transfer learning)
                                        
         ↓                                      ↓
                                        
@@ -42,7 +42,7 @@ Training Dataset                   →  Step 5: Predict
 - **Batch processing**: Apply all masks to all images
 
 ### Classification Model
-- **Transfer learning**: MobileNetV3-Large pretrained on ImageNet
+- **Transfer learning**: MobileNetV4 pretrained on ImageNet (via timm library)
 - **Binary classification**: Rain vs. No Rain
 - **Efficient**: Fast training and inference
 - **Accurate**: >95% validation accuracy with sufficient data
@@ -51,19 +51,60 @@ Training Dataset                   →  Step 5: Predict
 
 ### Requirements
 
-- Python 3.7+
+- Python 3.9+ (recommended: 3.10+)
 - PyTorch (with CUDA support recommended)
 - See `requirements.txt` for all dependencies
 
 ### Install Dependencies
 
+**Recommended (Windows/macOS/Linux): use a virtual environment** so you consistently use the same Pillow/PyTorch versions.
+
+**Windows (PowerShell):**
 ```bash
-pip install -r requirements.txt
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
+
+**macOS/Linux (bash/zsh):**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+This installs:
+- **torch**: PyTorch framework
+- **torchvision**: Computer vision utilities
+- **timm**: PyTorch Image Models (for MobileNetV4)
+- **pillow**: Image processing
+- **matplotlib**: Visualization
+- **scikit-learn**: Data splitting utilities
 
 **For GPU support** (recommended for training):
 ```bash
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+```
+
+## Troubleshooting
+
+### `AttributeError: module 'PIL.Image' has no attribute 'Resampling'`
+
+**Why it happens**: this project uses `Image.Resampling.LANCZOS`. If you run outside the virtual environment, your system Python may be importing an older Pillow that doesn’t include `Image.Resampling`.
+
+**Fix**:
+- Activate the project venv and re-run.
+- Or upgrade Pillow in the interpreter you’re using: `python -m pip install -U pillow`
+
+**Quick check**:
+```bash
+python -c "import PIL; from PIL import Image; print('Pillow:', PIL.__version__); print('Has Resampling:', hasattr(Image, 'Resampling'))"
 ```
 
 ## Quick Start
@@ -112,7 +153,7 @@ python rain_overlay.py
 
 ### Step 4: Train the Classifier
 
-Train MobileNetV3 to detect rain:
+Train MobileNetV4 to detect rain:
 
 ```bash
 python train_rain_classifier.py
@@ -221,7 +262,9 @@ rain = Image.open('output/heavy_rain.png')
 
 result = overlay.apply_overlay(base, rain, blend_mode='add', opacity=0.7)
 result.save('rainy_cloud.jpg')
-```Technical Details
+```
+
+## Technical Details
 
 ### Rain Mask Generation
 - **Top-down perspective**: Radial streaks from center (simulates camera facing up)
@@ -234,8 +277,8 @@ result.save('rainy_cloud.jpg')
 - **High quality**: JPEG quality=95
 
 ### Classification Model
-- **Architecture**: MobileNetV3-Large
-- **Pretrained**: ImageNet weights
+- **Architecture**: MobileNetV4 (conv_medium)
+- **Pretrained**: ImageNet weights (via timm)
 - **Input**: 224×224×3 RGB images
 - **Output**: 2 classes (No Rain=0, Rain=1)
 - **Training**: Adam optimizer, CrossEntropyLoss
@@ -248,13 +291,12 @@ result.save('rainy_cloud.jpg')
 
 ## Model Architecture
 
-Based on: [Understanding and Implementing MobileNetV3](https://medium.com/@RobuRishabh/understanding-and-implementing-mobilenetv3-422bd0bdfb5a)
+Based on: [MobileNetV4: Universal Models for the Mobile Ecosystem](https://arxiv.org/abs/2404.10518)
 
-**MobileNetV3-Large Features:**
-- Depthwise separable convolutions
-- Inverted residuals with linear bottlenecks
-- Squeeze-and-Excite (SE) modules
-- H-Swish activation function
+**MobileNetV4 Highlights:**
+- Improved efficiency vs. MobileNetV3
+- Better accuracy-to-latency tradeoff
+- Multiple variants (conv / hybrid)
 - Optimized for mobile/edge devices
 
 **Transfer Learning:**
@@ -268,7 +310,8 @@ ImageNet (1000 classes) → Modified classifier → Rain detection (2 classes)
 numpy - Array operations
 pillow - Image manipulation
 torch - Deep learning framework
-torchvision - Pretrained models and transforms
+timm - Pretrained models (MobileNetV4)
+torchvision - Transforms and utilities
 matplotlib - Plotting training curves
 scikit-learn - Train/test splitting
 ```
@@ -293,7 +336,7 @@ scikit-learn - Train/test splitting
 
 **CUDA out of memory?**
 - Reduce batch size to 8
-- Use MobileNetV3-Small instead
+- Use MobileNetV4 conv_small instead
 - Train on CPU (slower)
 
 **Rain too subtle/strong?**
@@ -339,14 +382,9 @@ MIT License
 
 ## Acknowledgments
 
-- MobileNetV3 implementation based on PyTorch torchvision
+- MobileNetV4 implementation via timm (PyTorch Image Models)
 - Inspired by weather augmentation techniques in computer vision
-- Transfer learning approach from ImageNet pretrained modelsch_process_folder(
-    image_folder='.',
-    mask_folder='output',
-    output_dir='overlayed_images'
-)
-```
+- Transfer learning approach from ImageNet pretrained models
 
 ### Programmatic Prediction
 

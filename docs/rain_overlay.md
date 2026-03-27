@@ -310,6 +310,12 @@ The script uses NumPy for efficient array operations:
 
 ## Troubleshooting
 
+**Error: `AttributeError: module 'PIL.Image' has no attribute 'Resampling'`**
+- **Cause**: You are running with an older Pillow (often happens when not using the project virtual environment).
+- **Fix**: Activate the venv and reinstall requirements, or upgrade Pillow:
+    - `python -m pip install -U pillow`
+    - Verify with: `python -c "import PIL; from PIL import Image; print(PIL.__version__, hasattr(Image,'Resampling'))"`
+
 **Images look too bright:**
 - Reduce opacity (try 0.5-0.6)
 - Use 'screen' blend mode instead of 'add'

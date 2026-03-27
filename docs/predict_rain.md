@@ -2,7 +2,7 @@
 
 ## Overview
 
-`predict_rain.py` is an inference script for making predictions using a trained rain classification model. It loads a saved MobileNetV3 model and classifies whether an image contains rain.
+`predict_rain.py` is an inference script for making predictions using a trained rain classification model. It loads a saved MobileNetV4 model and classifies whether an image contains rain.
 
 ## Purpose
 
@@ -32,10 +32,12 @@ load_model(model_path, device='cuda')
 
 **Implementation:**
 ```python
-# Recreate model architecture
-model = models.mobilenet_v3_large(pretrained=False)
-in_features = model.classifier[3].in_features
-model.classifier[3] = nn.Linear(in_features, 2)
+# Recreate model architecture using timm
+model = timm.create_model(
+    'mobilenetv4_conv_medium.e500_r224_in1k',
+    pretrained=False,
+    num_classes=2
+)
 
 # Load trained weights
 model.load_state_dict(torch.load(model_path, map_location=device))
@@ -275,7 +277,7 @@ if detector.has_rain('photo.jpg', threshold=0.7):
 ### Memory Usage
 
 **Model Size:**
-- RAM: ~60 MB (MobileNetV3-Large)
+- RAM: ~50-70 MB (MobileNetV4 conv_medium)
 - VRAM (GPU): ~100 MB including overhead
 
 **Per Image:**

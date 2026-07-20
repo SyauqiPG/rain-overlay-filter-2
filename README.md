@@ -165,10 +165,18 @@ python train_rain_classifier.py
 - Automatically splits into 80% train / 20% validation
 - Trains for 10 epochs with data augmentation
 - Saves best model as `best_rain_classifier.pth`
+- Exports matching ONNX model as `best_rain_classifier.onnx`
 
 **Output**:
 - `best_rain_classifier.pth` - Trained model weights
+- `best_rain_classifier.onnx` - Exported ONNX model for deployment
 - `training_history.png` - Loss and accuracy plots
+
+Optional standalone export from checkpoint:
+
+```bash
+python export_to_onnx.py --checkpoint best_rain_classifier.pth --output best_rain_classifier.onnx
+```
 
 ### Step 5: Make Predictions
 
@@ -181,6 +189,12 @@ python predict_rain.py --image path/to/image.jpg
 **Example**:
 ```bash
 python predict_rain.py --image overlayed_images/6_cumulonimbus_000005_heavy_rain_topdown_224x224.jpg
+```
+
+Use ONNX model explicitly:
+
+```bash
+python predict_rain.py --image overlayed_images/6_cumulonimbus_000005_heavy_rain_topdown_224x224.jpg --model best_rain_classifier.onnx --device cpu
 ```
 
 **Output**:
@@ -207,6 +221,7 @@ rain-overlay-filter/
 ├── rain_mask_generator.py      # Generate synthetic rain masks
 ├── rain_overlay.py              # Apply rain to cloud images
 ├── train_rain_classifier.py    # Train classification model
+├── export_to_onnx.py            # Export .pth checkpoint to ONNX
 ├── predict_rain.py              # Make predictions on images
 ├── requirements.txt             # Python dependencies
 │
@@ -226,6 +241,7 @@ rain-overlay-filter/
 │   └── ...
 │
 ├── best_rain_classifier.pth    # Trained model weights
+├── best_rain_classifier.onnx   # ONNX model for deployment/runtime portability
 └── training_history.png         # Training metrics plot
 ```
 
@@ -398,11 +414,22 @@ model = load_model('best_rain_classifier.pth', device)
 prediction, confidence, class_name = predict_image(
     model,
     'test_image.jpg',
-    device
+    str(device)
 )
 
 print(f"{class_name}: {confidence:.2f}%")
 # Output: "Rain: 95.32%"
+```
+
+### Programmatic Prediction (ONNX)
+
+```python
+from predict_rain import load_model, predict_image
+
+model = load_model('best_rain_classifier.onnx', 'cpu')
+prediction, confidence, class_name = predict_image(model, 'test_image.jpg', 'cpu')
+
+print(f"{class_name}: {confidence:.2f}%")
 ```
 
 ## Use Cases

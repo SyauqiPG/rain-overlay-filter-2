@@ -1,6 +1,6 @@
-# Rain Binary Classification with MobileNetV3
+# Rain Binary Classification with MobileNetV4
 
-Binary classification model to detect rain in images using MobileNetV3 transfer learning.
+Binary classification model to detect rain in images using MobileNetV4 transfer learning.
 
 ## Model Architecture
 
@@ -13,7 +13,7 @@ Binary classification model to detect rain in images using MobileNetV3 transfer 
 
 ## Reference
 
-Implementation based on: [Understanding and Implementing MobileNetV3](https://medium.com/@RobuRishabh/understanding-and-implementing-mobilenetv3-422bd0bdfb5a)
+Implementation based on: [Understanding and Implementing MobileNetV4](https://medium.com/@RobuRishabh/understanding-and-implementing-mobilenetv3-422bd0bdfb5a)
 
 ## Installation
 
@@ -58,7 +58,14 @@ python train_rain_classifier.py
 ### Output Files
 
 - `best_rain_classifier.pth`: Best model weights (highest validation accuracy)
+- `best_rain_classifier.onnx`: ONNX export of the same best model (for runtime portability)
 - `training_history.png`: Training/validation loss and accuracy plots
+
+Optional standalone export from checkpoint:
+
+```bash
+python export_to_onnx.py --checkpoint best_rain_classifier.pth --output best_rain_classifier.onnx
+```
 
 ## Inference
 
@@ -70,7 +77,7 @@ python predict_rain.py --image path/to/image.jpg
 
 **Options:**
 - `--image`: Path to image (required)
-- `--model`: Path to model weights (default: `best_rain_classifier.pth`)
+- `--model`: Path to model weights (`.pth` or `.onnx`, default: `best_rain_classifier.pth`)
 - `--device`: Device to use - `cuda` or `cpu` (default: `cuda`)
 
 ### Example
@@ -91,6 +98,12 @@ Confidence: 98.45%
 ==================================================
 ```
 
+ONNX inference example:
+
+```bash
+python predict_rain.py --image overlayed_images/6_cumulonimbus_000005_heavy_rain_topdown_224x224.jpg --model best_rain_classifier.onnx --device cpu
+```
+
 ## Project Structure
 
 ```
@@ -98,11 +111,13 @@ rain-overlay-filter/
 ├── rain_mask_generator.py       # Generate rain masks
 ├── rain_overlay.py               # Apply rain overlays to images
 ├── train_rain_classifier.py     # Train classification model
+├── export_to_onnx.py             # Export checkpoint (.pth) to ONNX
 ├── predict_rain.py               # Inference script
 ├── requirements.txt              # Python dependencies
 ├── output/                       # Generated rain masks
 ├── overlayed_images/             # Images with rain overlay
 ├── best_rain_classifier.pth     # Trained model weights
+├── best_rain_classifier.onnx    # ONNX model artifact
 └── training_history.png          # Training plots
 ```
 
@@ -132,7 +147,7 @@ batch_size = 32
 lr = 0.0001
 
 # Use MobileNetV3-Small instead
-model = models.mobilenet_v3_small(pretrained=True)
+model = models.mobilenet_v4_small(pretrained=True)
 ```
 
 ## Programmatic Usage
@@ -156,6 +171,13 @@ prediction, confidence, class_name = predict_image(
 print(f"{class_name}: {confidence:.2f}%")
 ```
 
+For ONNX runtime use:
+
+```python
+model = load_model('best_rain_classifier.onnx', 'cpu')
+prediction, confidence, class_name = predict_image(model, 'path/to/image.jpg', 'cpu')
+```
+
 ## Tips for Better Accuracy
 
 1. **More Training Data**: Collect more diverse rain/no-rain images
@@ -168,7 +190,7 @@ print(f"{class_name}: {confidence:.2f}%")
 
 **CUDA Out of Memory**:
 - Reduce batch size
-- Use `mobilenet_v3_small` instead of `large`
+- Use `mobilenet_v4_small` instead of `large`
 - Use CPU: `--device cpu`
 
 **Low Accuracy**:

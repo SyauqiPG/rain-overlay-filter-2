@@ -13,9 +13,17 @@ import timm
 from PIL import Image
 import os
 import numpy as np
+import importlib
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+
+
+MODEL_NAME = 'mobilenetv4_conv_medium.e500_r224_in1k'
+INPUT_SIZE = 224
+NUM_CLASSES = 2
+NORMALIZE_MEAN = [0.485, 0.456, 0.406]
+NORMALIZE_STD = [0.229, 0.224, 0.225]
 
 
 class RainDataset(Dataset):
@@ -138,12 +146,54 @@ def create_model(num_classes=2, pretrained=True):
     # Load pretrained MobileNetV4 using timm
     # Using mobilenetv4_conv_medium as a good balance between speed and accuracy
     model = timm.create_model(
-        'mobilenetv4_conv_medium.e500_r224_in1k',
+        MODEL_NAME,
         pretrained=pretrained,
         num_classes=num_classes
     )
     
     return model
+
+
+def export_model_to_onnx(model, output_path='best_rain_classifier.onnx', opset_version=18):
+    """Export model to ONNX format and validate the graph."""
+    try:
+        onnx = importlib.import_module('onnx')
+    except ModuleNotFoundError:
+        print('ONNX package not found. Skipping ONNX export.')
+        print("Install with: pip install onnx onnxruntime onnxscript")
+        return False
+
+    original_device = next(model.parameters()).device
+    was_training = model.training
+
+    try:
+        model = model.to('cpu')
+        model.eval()
+
+        dummy_input = torch.randn(1, 3, INPUT_SIZE, INPUT_SIZE, dtype=torch.float32)
+
+        torch.onnx.export(
+            model,
+            dummy_input,
+            output_path,
+            export_params=True,
+            opset_version=opset_version,
+            do_constant_folding=True,
+            input_names=['image'],
+            output_names=['logits'],
+            dynamic_axes={
+                'image': {0: 'batch_size'},
+                'logits': {0: 'batch_size'}
+            }
+        )
+
+        onnx_model = onnx.load(output_path)
+        onnx.checker.check_model(onnx_model)
+        return True
+    finally:
+        model = model.to(original_device)
+        if was_training:
+            model.train()
 
 
 def train_model(model, train_loader, val_loader, criterion, optimizer, 
@@ -250,6 +300,11 @@ def train_model(model, train_loader, val_loader, criterion, optimizer,
             best_val_acc = val_acc
             torch.save(model.state_dict(), 'best_rain_classifier.pth')
             print(f'Saved best model with validation accuracy: {val_acc:.2f}%')
+            try:
+                if export_model_to_onnx(model, output_path='best_rain_classifier.onnx', opset_version=18):
+                    print("Exported and validated ONNX model: 'best_rain_classifier.onnx'")
+            except Exception as exc:
+                print(f'ONNX export failed: {exc}')
         
         # Early stopping check
         early_stopping(val_loss)
@@ -314,17 +369,17 @@ def main():
     
     # Define data transformations (following ImageNet normalization)
     train_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD)
     ])
     
     val_transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((INPUT_SIZE, INPUT_SIZE)),
         transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.Normalize(NORMALIZE_MEAN, NORMALIZE_STD)
     ])
     
     # Create datasets
@@ -337,7 +392,7 @@ def main():
     
     # Create model
     print("\nCreating MobileNetV4 model...")
-    model = create_model(num_classes=2, pretrained=True)
+    model = create_model(num_classes=NUM_CLASSES, pretrained=True)
     
     # Define loss function and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -365,6 +420,7 @@ def main():
     print("\n" + "=" * 60)
     print("Training completed!")
     print(f"Best model saved as 'best_rain_classifier.pth'")
+    print(f"Best model exported as 'best_rain_classifier.onnx'")
     print(f"Training history plot saved as 'training_history.png'")
 
 

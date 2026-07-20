@@ -272,7 +272,14 @@ python train_rain_classifier.py
 3. Creates data loaders with augmentation
 4. Trains MobileNetV4 (conv_medium variant) for 10 epochs
 5. Saves best model as `best_rain_classifier.pth`
-6. Generates `training_history.png` plot
+6. Exports best model as `best_rain_classifier.onnx`
+7. Generates `training_history.png` plot
+
+Optional standalone export without retraining:
+
+```bash
+python export_to_onnx.py --checkpoint best_rain_classifier.pth --output best_rain_classifier.onnx
+```
 
 ### Custom Training
 
@@ -321,7 +328,18 @@ model = timm.create_model(
 model.load_state_dict(torch.load('best_rain_classifier.pth'))
 ```
 
-### 2. training_history.png
+### 2. best_rain_classifier.onnx
+
+**Content**: ONNX graph exported from the best checkpoint
+
+**Use**: Cross-framework inference via ONNX Runtime
+
+**Validation example:**
+```bash
+python -c "import onnx; m=onnx.load('best_rain_classifier.onnx'); onnx.checker.check_model(m); print('onnx valid')"
+```
+
+### 3. training_history.png
 
 **Content**: 2-panel plot
 - Left: Training/validation loss curves
@@ -366,6 +384,7 @@ Saved best model with validation accuracy: 75.00%
 ============================================================
 Training completed!
 Best model saved as 'best_rain_classifier.pth'
+Best model exported as 'best_rain_classifier.onnx'
 Training history plot saved as 'training_history.png'
 ```
 
@@ -446,6 +465,8 @@ for epoch in range(num_epochs):
 - `torch`: PyTorch deep learning framework
 - `torchvision`: Transforms and utilities
 - `timm`: PyTorch Image Models (for MobileNetV4)
+- `onnx`: ONNX graph format and validation
+- `onnxruntime`: ONNX inference runtime
 - `pillow`: Image loading
 - `numpy`: Array operations
 - `sklearn`: Train/test split

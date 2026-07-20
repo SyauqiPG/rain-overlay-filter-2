@@ -24,25 +24,30 @@ load_model(model_path, device='cuda')
 ```
 
 **Parameters:**
-- `model_path` (str): Path to saved model weights (.pth file)
+- `model_path` (str): Path to saved model (`.pth` or `.onnx`)
 - `device` (str): Device to load model on ('cuda' or 'cpu')
 
 **Returns:**
-- Loaded PyTorch model in evaluation mode
+- Loaded PyTorch model in evaluation mode (`.pth`) or ONNX Runtime wrapper (`.onnx`)
 
 **Implementation:**
 ```python
-# Recreate model architecture using timm
-model = timm.create_model(
-    'mobilenetv4_conv_medium.e500_r224_in1k',
-    pretrained=False,
-    num_classes=2
-)
+if model_path.endswith('.onnx'):
+    # Load ONNX Runtime session with provider fallback
+    session = ort.InferenceSession(model_path, providers=[...])
+    model = ONNXRainModel(session=session, runtime_device='cpu')
+else:
+    # Recreate model architecture using timm
+    model = timm.create_model(
+        'mobilenetv4_conv_medium.e500_r224_in1k',
+        pretrained=False,
+        num_classes=2
+    )
 
-# Load trained weights
-model.load_state_dict(torch.load(model_path, map_location=device))
-model = model.to(device)
-model.eval()  # Set to evaluation mode
+    # Load trained weights
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = model.to(device)
+    model.eval()  # Set to evaluation mode
 ```
 
 **Example:**
@@ -102,7 +107,7 @@ python predict_rain.py --image PATH [--model PATH] [--device DEVICE]
 
 **Arguments:**
 - `--image` (required): Path to image for prediction
-- `--model` (optional): Path to model weights (default: 'best_rain_classifier.pth')
+- `--model` (optional): Path to model (`.pth` or `.onnx`, default: 'best_rain_classifier.pth')
 - `--device` (optional): Device to use - 'cuda' or 'cpu' (default: 'cuda')
 
 **Example:**
@@ -180,6 +185,11 @@ python predict_rain.py --image test_image.jpg
 **Custom model path:**
 ```bash
 python predict_rain.py --image test.jpg --model models/rain_v2.pth
+```
+
+**ONNX model path:**
+```bash
+python predict_rain.py --image test.jpg --model best_rain_classifier.onnx --device cpu
 ```
 
 **Force CPU (no GPU):**
@@ -272,7 +282,7 @@ if detector.has_rain('photo.jpg', threshold=0.7):
 - Load model once, predict many times
 - Use GPU when available
 - Batch predictions for multiple images
-- Use TorchScript for production deployment
+- Use ONNX Runtime for production deployment portability
 
 ### Memory Usage
 
@@ -369,20 +379,18 @@ print(f"No Rain: {probs['no_rain']:.2f}%")
 print(f"Rain: {probs['rain']:.2f}%")
 ```
 
-### Model Export (TorchScript)
+### Model Export (ONNX)
 
 ```python
-# Export model for production
-model = load_model('best_rain_classifier.pth', 'cpu')
-model.eval()
+# Export checkpoint to ONNX without retraining
+# Command-line usage:
+# python export_to_onnx.py --checkpoint best_rain_classifier.pth --output best_rain_classifier.onnx
 
-example_input = torch.randn(1, 3, 224, 224)
-traced_model = torch.jit.trace(model, example_input)
-traced_model.save('rain_classifier_traced.pt')
+import onnx
 
-# Load and use traced model
-loaded_traced = torch.jit.load('rain_classifier_traced.pt')
-# Use same as regular model
+onnx_model = onnx.load('best_rain_classifier.onnx')
+onnx.checker.check_model(onnx_model)
+print('ONNX model is valid')
 ```
 
 ## Error Handling
@@ -418,6 +426,7 @@ if device.type == 'cpu':
 
 - `torch`: PyTorch for model loading and inference
 - `torchvision`: Image transforms and models
+- `onnxruntime`: Runtime for `.onnx` inference
 - `pillow`: Image loading
 - `argparse`: Command-line argument parsing
 

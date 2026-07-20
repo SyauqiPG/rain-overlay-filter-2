@@ -83,7 +83,7 @@ INPUT: Cloud Images (any size)
    │
    ├─── STEP 5: Train Classification Model
    │    └─► Run: python train_rain_classifier.py
-   │    └─► Output: best_rain_classifier.pth, training_history.png
+   │    └─► Output: best_rain_classifier.pth, best_rain_classifier.onnx, training_history.png
    │
    └─── STEP 6: Make Predictions
         └─► Run: python predict_rain.py --image path/to/image.jpg
@@ -324,6 +324,7 @@ python train_rain_classifier.py
 
 4. **Output**:
    - `best_rain_classifier.pth` - Model weights
+   - `best_rain_classifier.onnx` - ONNX model for deployment/runtime portability
    - `training_history.png` - Loss/accuracy plots
 
 **Console Output:**
@@ -366,6 +367,7 @@ Saved best model with validation accuracy: 100.00%
 ============================================================
 Training completed!
 Best model saved as 'best_rain_classifier.pth'
+Best model exported as 'best_rain_classifier.onnx'
 Training history plot saved as 'training_history.png'
 ```
 
@@ -376,7 +378,7 @@ Training history plot saved as 'training_history.png'
 **Verification:**
 ```bash
 # Check model file exists
-ls -lh best_rain_classifier.pth
+ls -lh best_rain_classifier.pth best_rain_classifier.onnx
 # Should be ~15-20 MB
 
 # Check training plot
@@ -429,6 +431,12 @@ Confidence: 98.45%
 ==================================================
 ```
 
+Test ONNX inference:
+
+```bash
+python predict_rain.py --image overlayed_images/6_cumulonimbus_000005_heavy_rain_topdown_224x224.jpg --model best_rain_classifier.onnx --device cpu
+```
+
 Test on a no-rain image:
 ```bash
 python predict_rain.py --image 6_cumulonimbus_000005.jpg
@@ -446,6 +454,9 @@ Confidence: 99.12%
 ```bash
 # Use specific model
 python predict_rain.py --image test.jpg --model my_model.pth
+
+# Use ONNX model
+python predict_rain.py --image test.jpg --model best_rain_classifier.onnx --device cpu
 
 # Force CPU (no GPU)
 python predict_rain.py --image test.jpg --device cpu
@@ -465,6 +476,13 @@ model = load_model('best_rain_classifier.pth', device)
 for img_path in Path('test_images').glob('*.jpg'):
     pred, conf, name = predict_image(model, str(img_path), device)
     print(f"{img_path.name}: {name} ({conf:.1f}%)")
+```
+
+Standalone export from existing checkpoint:
+
+```bash
+python export_to_onnx.py --checkpoint best_rain_classifier.pth --output best_rain_classifier.onnx
+python -c "import onnx; m=onnx.load('best_rain_classifier.onnx'); onnx.checker.check_model(m); print('onnx valid')"
 ```
 
 ---
@@ -494,7 +512,7 @@ ls overlayed_images/
 #### After Step 5 (Training):
 ```bash
 # Check model file
-ls -lh best_rain_classifier.pth
+ls -lh best_rain_classifier.pth best_rain_classifier.onnx
 
 # Check training plot
 open training_history.png  # macOS
@@ -643,7 +661,7 @@ python predict_rain.py --image test.jpg
 ### Production Deployment
 
 1. **Model optimization**:
-   - Convert to TorchScript
+   - Validate ONNX export and providers
    - Quantization for faster inference
    - ONNX export for cross-platform
 
